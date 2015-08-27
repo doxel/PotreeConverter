@@ -4,6 +4,7 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
 ## Downloads
 
+* [PotreeConverter 1.2, windows 64bit](https://github.com/potree/PotreeConverter/releases/tag/1.2)
 * [PotreeConverter 1.1.1, windows 64bit](http://potree.org/downloads/PotreeConverter/PotreeConverter_1.1.1.zip)
 * [PotreeConverter 1.0, windows 64bit](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.12.30.zip)
 
@@ -26,6 +27,13 @@ Linux/MacOSX:
     make
 
     # copy ./PotreeConverter/resources/page_template to your binary working directory.
+	
+Linux with custom builds of liblas and laszip
+
+```
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DLIBLAS_INCLUDE_DIR=/opt/source/libLAS-1.8.0/build/include/ -DLIBLAS_LIBRARY=/opt/source/libLAS-1.8.0/build/lib/liblas.so -DLASZIP_INCLUDE_DIR=/opt/source/laszip-2.1.0/build/include -DLASZIP_LIBRARY=/opt/source/laszip-2.1.0/build/lib/liblaszip.so ..
+```
 
 Ubuntu:
 
@@ -43,24 +51,29 @@ Ubuntu:
 
     # copy ./PotreeConverter/resources/page_template to your binary working directory.
 
-Windows / Microsoft Visual Studio 2012:
+Windows / Microsoft Visual Studio 2015:
 
-    # make sure you've got these environment variables set with your directory structure
-    set BOOST_ROOT=D:\dev\lib\boost_1_56_0
-    set BOOST_LIBRARYDIR=D:\dev\lib\boost\x64
-    set LIBLAS_INCLUDE_DIR=D:\dev\lib\libLAS\include
-    set LIBLAS_LIBRARY_DIR=D:\dev\lib\libLAS\build\bin\Release
+```
+# make sure you've got these environment variables set with your directory structure
+set BOOST_ROOT=D:\dev\lib\boost_1_58_0
+set BOOST_LIBRARYDIR=D:\dev\lib\boost\1.58_x64_msvc2015
+set LIBLAS_INCLUDE_DIR=D:\dev\lib\libLAS\include
+set LIBLAS_LIBRARY_DIR=D:\dev\lib\libLAS\build\bin\Release
 
-    mkdir build
-    cd build
+# compile boost
+b2 toolset=msvc-14.0 address-model=64 link=static link=shared threading=multi --build-type=complete stage --width-system --with-thread --with-filesystem --with-program_options --with-regex
 
-    # 32bit project
-    cmake -G "Visual Studio 11" -T "v110" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
+mkdir build
+cd build
 
-    # or 64bit project
-    cmake -G "Visual Studio 11 Win64" -T "v110" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
+# 32bit project
+cmake -G "Visual Studio 14 2015" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
 
-    # copy ./PotreeConverter/resources/page_template to your binary working directory.
+# or 64bit project
+cmake -G "Visual Studio 14 2015 Win64" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
+
+# copy ./PotreeConverter/resources/page_template to your binary working directory.
+```
 
 ## PotreeConverter Usage
 
@@ -83,7 +96,7 @@ Options:
 --intensity-range arg
 --output-format arg                   Output format can be BINARY, LAS or
                                       LAZ. Default is BINARY
--a [ --output-attributes ] arg        Can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.
+-a [ --output-attributes ] arg        Can be any combination of RGB, INTENSITY, CLASSIFICATION and NORMAL. Default is RGB.
 --scale arg                           Scale of the X, Y, Z coordinate in LAS and LAZ files.
 --source arg                          Source file. Can be LAS, LAZ, PTX or
 ```

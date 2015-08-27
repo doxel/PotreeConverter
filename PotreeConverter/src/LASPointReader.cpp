@@ -21,17 +21,17 @@ using boost::iequals;
 using std::ios;
 using liblas::VariableRecord;
 
+namespace Potree{
+
 AABB LIBLASReader::getAABB(){
     AABB aabb;
 
     const liblas::Header &header = reader.GetHeader();
 
     Point minp = transform(header.GetMinX(), header.GetMinY(), header.GetMinZ());
-    Vector3<double> min = Vector3<double>(minp.x, minp.y, minp.z);
     Point maxp = transform(header.GetMaxX(), header.GetMaxY(), header.GetMaxZ());
-    Vector3<double> max = Vector3<double>(maxp.x, maxp.y, maxp.z);
-    aabb.update(min);
-    aabb.update(max);
+    aabb.update(minp.position);
+    aabb.update(maxp.position);
 
     return aabb;
 }
@@ -57,9 +57,7 @@ LASPointReader::LASPointReader(string path){
 	
 
 	// read bounding box
-	for(int i = 0; i < files.size(); i++){
-		string file = files[i];
-
+	for (const auto &file : files) {
 		LIBLASReader aabbReader(file);
 		AABB lAABB = aabbReader.getAABB();
 		
@@ -128,4 +126,6 @@ Vector3<double> LASPointReader::getScale(){
 	scale.z = reader->reader.GetHeader().GetScaleZ();
 
 	return scale;
+}
+
 }

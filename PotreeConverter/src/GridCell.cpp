@@ -10,6 +10,7 @@ using std::endl;
 using std::min;
 using std::max;
 
+namespace Potree{
 
 GridCell::GridCell(){
 
@@ -38,58 +39,20 @@ GridCell::GridCell(SparseGrid *grid, GridIndex &index){
 	}
 }
 
-float GridCell::minGap(const Vector3<double> &p){
-	float minGap = MAX_FLOAT;
-
-	for(int i = 0; i < points.size(); i++){
-		Vector3<double> point = points[i];
-		minGap = min(minGap, (float)point.distanceTo(p));
-	}
-
-	return minGap;
-}
-
-float GridCell::squaredMinGap(const Vector3<double> &p){
-	float minGap = MAX_FLOAT;
-
-	for(int i = 0; i < points.size(); i++){
-		Vector3<double> point = points[i];
-		minGap = min(minGap, (float)point.squaredDistanceTo(p));
-	}
-
-	return minGap;
-}
-
-float GridCell::minGapAtArea(const Vector3<double> &p){
-	float areaGap = MAX_FLOAT;
-	for(int a = 0; a < neighbours.size(); a++){
-		GridCell *neighbour = neighbours[a];
-		float gap = neighbour->minGap(p);
-		areaGap = min(gap, areaGap);
-	}
-
-	return areaGap;
-}
-
 void GridCell::add(Vector3<double> p){
 	points.push_back(p);
 }
 
-bool GridCell::isDistant(const Vector3<double> &p, double squaredSpacing){
-	//for(int i = 0; i < points.size(); i++){
-	int numPoints = (int)points.size();
-	for(int i = 0; i < numPoints; i++){
-		Vector3<double> &point = points[i];
-		double dx = p.x - point.x;
-		double dy = p.y - point.y;
-		double dz = p.z - point.z;
-		double squaredDistance = dx * dx + dy * dy + dz * dz;
-
-		if(squaredDistance < squaredSpacing){
+bool GridCell::isDistant(const Vector3<double> &p, const double squaredSpacing) const {
+	for(const Vector3<double> &point : points){
+		
+		if(p.squaredDistanceTo(point) < squaredSpacing){
 			return false;
 		}
 
 	}
 
 	return true;
+}
+
 }

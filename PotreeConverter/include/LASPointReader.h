@@ -19,6 +19,7 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+namespace Potree{
 
 class LIBLASReader{
 private:
@@ -27,13 +28,11 @@ private:
     Point transform(double x, double y, double z) const {
         Point p;
         if (hasTransform) {
-            p.x = tr[0] * x + tr[4] * y + tr[8] * z + tr[12];
-            p.y = tr[1] * x + tr[5] * y + tr[9] * z + tr[13];
-            p.z = tr[2] * x + tr[6] * y + tr[10] * z + tr[14];
+            p.position.x = tr[0] * x + tr[4] * y + tr[8] * z + tr[12];
+            p.position.y = tr[1] * x + tr[5] * y + tr[9] * z + tr[13];
+            p.position.z = tr[2] * x + tr[6] * y + tr[10] * z + tr[14];
         } else {
-            p.x = x;
-            p.y = y;
-            p.z = z;
+			p.position = Vector3<double>{x,y,z};
         }
         return p;
     }
@@ -51,8 +50,7 @@ public:
 		hasTransform = false;
 
 //      cout << "There are " << vlrs.size() << " VLRs." << endl;
-        for (int i = 0; i < vlrs.size(); ++i) {
-            liblas::VariableRecord vlr = vlrs[i];
+	for (const auto &vlr : vlrs) {
             if (vlr.GetRecordId() == 2001) {
                 const uint8_t *data = vlr.GetData().data();
                 for (int k = 0; k < 16; ++k) {
@@ -100,9 +98,9 @@ public:
         p.intensity = lp.GetIntensity();
         p.classification = lp.GetClassification().GetClass();
 
-        p.r = lp.GetColor().GetRed() / colorScale;
-        p.g = lp.GetColor().GetGreen() / colorScale;
-        p.b = lp.GetColor().GetBlue() / colorScale;
+        p.color.x = lp.GetColor().GetRed() / colorScale;
+        p.color.y = lp.GetColor().GetGreen() / colorScale;
+        p.color.z = lp.GetColor().GetBlue() / colorScale;
 
 		p.returnNumber = (unsigned char)lp.GetReturnNumber();
 		p.numberOfReturns = (unsigned char)lp.GetNumberOfReturns();
@@ -143,5 +141,7 @@ public:
 
 	Vector3<double> getScale();
 };
+
+}
 
 #endif
