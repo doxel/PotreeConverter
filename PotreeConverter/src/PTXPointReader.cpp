@@ -41,8 +41,8 @@ inline void getlined(fstream *stream, vector<double> &result) {
 }
 
 inline void skipline(fstream *stream) {
-    string str;
-    getline(*stream, str);
+    char str[512];
+    stream->getline(str, 512);
 }
 
 bool assertd(fstream *stream, size_t i) {
@@ -83,7 +83,7 @@ PTXPointReader::PTXPointReader(string path) {
     this->currentFile = files.begin();
     this->stream = new fstream(*(this->currentFile), ios::in);
     this->currentChunk = 0;
-    skipline(*this->stream);
+    skipline(this->stream);
     loadChunk(this->stream, this->currentChunk, this->tr);
 }
 
@@ -110,7 +110,7 @@ void PTXPointReader::scanForAABB() {
         getlined(stream, split);
         while (!pleaseStop) {
             if (1 == split.size()) {
-                if (!loadChunk(&stream, currentChunk, tr)) {
+                if (!loadChunk(stream, currentChunk, tr)) {
                     break;
                 }
             }
@@ -163,10 +163,10 @@ bool PTXPointReader::loadChunk(fstream *stream, long currentChunk, double tr[16]
     vector<double> split;
 
     // The first 5 lines should have respectively 1, 3, 3, 3, 3 numbers each.
-    if (!assertd(*stream, 1) || !assertd(*stream, 3) || !assertd(*stream, 3) || !assertd(*stream, 3) || !assertd(*stream, 3))
+    if (!assertd(stream, 1) || !assertd(stream, 3) || !assertd(stream, 3) || !assertd(stream, 3) || !assertd(stream, 3))
         return false;
 
-    getlined(*stream, split);
+    getlined(stream, split);
     if (4 != split.size()) {
         return false;
     };
@@ -175,7 +175,7 @@ bool PTXPointReader::loadChunk(fstream *stream, long currentChunk, double tr[16]
     tr[2] = split[2];
     tr[3] = split[3];
 
-    getlined(*stream, split);
+    getlined(stream, split);
     if (4 != split.size()) {
         return false;
     };
@@ -184,7 +184,7 @@ bool PTXPointReader::loadChunk(fstream *stream, long currentChunk, double tr[16]
     tr[6] = split[2];
     tr[7] = split[3];
 
-    getlined(*stream, split);
+    getlined(stream, split);
     if (4 != split.size()) {
         return false;
     };
@@ -193,7 +193,7 @@ bool PTXPointReader::loadChunk(fstream *stream, long currentChunk, double tr[16]
     tr[10] = split[2];
     tr[11] = split[3];
 
-    getlined(*stream, split);
+    getlined(stream, split);
     if (4 != split.size()) {
         return false;
     };
@@ -225,18 +225,18 @@ bool PTXPointReader::doReadNextPoint() {
         if (this->currentFile != files.end()) {
             this->stream = new fstream(*(this->currentFile), ios::in);
             this->currentChunk = 0;
-            skipline(*stream);
+            skipline(stream);
             loadChunk(stream, currentChunk, tr);
         } else {
             return false;
         }
     }
     vector<double> split;
-    getlined(*stream, split);
+    getlined(stream, split);
     if (1 == split.size()) {
         this->currentChunk++;
         loadChunk(stream, currentChunk, tr);
-        getlined(*stream, split);
+        getlined(stream, split);
     }
     auto size1 = split.size();
     if (size1 > 3) {
