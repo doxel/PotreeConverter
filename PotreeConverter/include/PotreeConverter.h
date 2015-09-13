@@ -31,6 +31,7 @@ private:
 	PointReader *createPointReader(string source, PointAttributes pointAttributes);
 	void prepare();
 	AABB calculateAABB();
+	void generatePage(string name);
 
 public:
 	float spacing;
@@ -44,6 +45,7 @@ public:
 	int diagonalFraction = 250;
 	vector<double> aabbValues;
 	string pageName = "";
+	StoreOption storeOption = StoreOption::ABORT_IF_EXISTS;
 
 	PotreeConverter(string workDir, vector<string> sources);
 		

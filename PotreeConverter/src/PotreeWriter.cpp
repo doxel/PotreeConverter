@@ -4,6 +4,8 @@
 #include <sstream>
 #include <stack>
 #include <chrono>
+#include <fstream>
+#include <iomanip>
 
 
 
@@ -25,6 +27,7 @@
 
 #include "PotreeWriter.h"
 
+using std::ifstream;
 using std::stack;
 using std::stringstream;
 using std::chrono::high_resolution_clock;
@@ -165,7 +168,7 @@ PWNode *PWNode::add(Point &point){
 
 	if(isLeafNode()){
 		store.push_back(point);
-		if(store.size() >= storeLimit){
+		if(int(store.size()) >= storeLimit){
 			split();
 		}
 
@@ -310,19 +313,11 @@ vector<PWNode*> PWNode::getHierarchy(int levels){
 
 
 void PWNode::traverse(std::function<void(PWNode*)> callback){
+	callback(this);
 
-	stack<PWNode*> st;
-	st.push(this);
-	while(!st.empty()){
-		PWNode *node = st.top();
-		st.pop();
-
-		callback(node);
-
-		for(PWNode *child : node->children){
-			if(child != NULL){
-				st.push(child);
-			}
+	for(PWNode *child : this->children){
+		if(child != NULL){
+			child->traverse(callback);
 		}
 	}
 }
@@ -361,6 +356,22 @@ void PWNode::traverseBreadthFirst(std::function<void(PWNode*)> callback){
 }
 
 
+PWNode* PWNode::findNode(string name){
+	string thisName = this->name();
+
+	if(name.size() == thisName.size()){
+		return (name == thisName) ? this : NULL;
+	}else if(name.size() > thisName.size()){
+		int childIndex = stoi(string(1, name[thisName.size()]));
+		if(!isLeafNode() && children[childIndex] != NULL){
+			return children[childIndex]->findNode(name);
+		}else{
+			return NULL;
+		}
+	}else{
+		return NULL;
+	}
+}
 
 
 
@@ -377,6 +388,9 @@ void PWNode::traverseBreadthFirst(std::function<void(PWNode*)> callback){
 
 
 
+PotreeWriter::PotreeWriter(string workDir){
+	this->workDir = workDir;
+}
 
 PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes){
 	this->workDir = workDir;
@@ -411,69 +425,6 @@ PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDept
 	root = new PWNode(this, aabb);
 }
 
-void PotreeWriter::generatePage(string name){
-	if(this->numAdded > 0){
-		throw PotreeException("generatePage() must be called before add()!");
-	}
-
-	string pagedir = this->workDir;
-	this->workDir += "/resources/pointclouds/" + name;
-	string templateSourcePath = "./resources/page_template/examples/viewer_template.html";
-	string templateTargetPath = pagedir + "/examples/" + name + ".html";
-
-	Potree::copyDir(fs::path("./resources/page_template"), fs::path(pagedir));
-	fs::remove(pagedir + "/examples/viewer_template.html");
-
-	{ // change viewer template
-		ifstream in( templateSourcePath );
-		ofstream out( templateTargetPath );
-
-		string line;
-		while(getline(in, line)){
-			if(line.find("<!-- INCLUDE SETTINGS HERE -->") != string::npos){
-				out << "\t<script src=\"./" << name << ".js\"></script>" << endl;
-			}else if((outputFormat == Potree::OutputFormat::LAS || outputFormat == Potree::OutputFormat::LAZ) && 
-				line.find("<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->") != string::npos){
-				
-				out << "\t<script src=\"../libs/plasio/js/laslaz.js\"></script>" << endl;
-				out << "\t<script src=\"../libs/plasio/vendor/bluebird.js\"></script>" << endl;
-				out << "\t<script src=\"../build/js/laslaz.js\"></script>" << endl;
-			}else{
-				out << line << endl;
-			}
-			
-		}
-
-		in.close();
-		out.close();
-	}
-
-
-	{ // write settings
-		stringstream ssSettings;
-
-		ssSettings << "var sceneProperties = {" << endl;
-		ssSettings << "\tpath: \"" << "../resources/pointclouds/" << name << "/cloud.js\"," << endl;
-		ssSettings << "\tcameraPosition: null, 		// other options: cameraPosition: [10,10,10]," << endl;
-		ssSettings << "\tcameraTarget: null, 		// other options: cameraTarget: [0,0,0]," << endl;
-		ssSettings << "\tfov: 60, 					// field of view in degrees," << endl;
-		ssSettings << "\tsizeType: \"Adaptive\",	// other options: \"Fixed\", \"Attenuated\"" << endl;
-		ssSettings << "\tquality: null, 			// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
-		ssSettings << "\tmaterial: \"RGB\", 		// other options: \"Height\", \"Intensity\", \"Classification\"" << endl;
-		ssSettings << "\tpointLimit: 1,				// max number of points in millions" << endl;
-		ssSettings << "\tpointSize: 1,				// " << endl;
-		ssSettings << "\tnavigation: \"Orbit\",		// other options: \"Orbit\", \"Flight\"" << endl;
-		ssSettings << "\tuseEDL: false,				" << endl;
-		ssSettings << "};" << endl;
-
-	
-		ofstream fSettings;
-		fSettings.open(pagedir + "/examples/" + name + ".js", ios::out);
-		fSettings << ssSettings.str();
-		fSettings.close();
-	}
-}
-
 string PotreeWriter::getExtension(){
 	if(outputFormat == OutputFormat::LAS){
 		return ".las";
@@ -497,13 +448,6 @@ void PotreeWriter::add(Point &p){
 		boost::filesystem::path dataDir(workDir + "/data");
 		boost::filesystem::path tempDir(workDir + "/temp");
 
-		if(fs::exists(dataDir)){
-			fs::remove_all(dataDir);
-		}
-		if(fs::exists(tempDir)){
-			fs::remove_all(tempDir);
-		}
-
 		fs::create_directories(dataDir);
 		fs::create_directories(tempDir);
 	}
@@ -526,10 +470,10 @@ void PotreeWriter::processStore(){
 		for(Point p : st){
 			PWNode *acceptedBy = root->add(p);
 			if(acceptedBy != NULL){
+				tightAABB.update(p.position);
+
 				pointsInMemory++;
 				numAccepted++;
-
-				tightAABB.update(p.position);
 			}
 		}
 	});
@@ -555,6 +499,7 @@ void PotreeWriter::flush(){
 		cloudjs.hierarchy = vector<CloudJS::Node>();
 		cloudjs.hierarchyStepSize = hierarchyStepSize;
 		cloudjs.tightBoundingBox = tightAABB;
+		cloudjs.numAccepted = numAccepted;
 
 		ofstream cloudOut(workDir + "/cloud.js", ios::out);
 		cloudOut << cloudjs.getString();
@@ -595,7 +540,7 @@ void PotreeWriter::flush(){
 
 				for(const auto &descendant : hierarchy){
 					char children = 0;
-					for(int j = 0; j < descendant->children.size(); j++){
+					for(int j = 0; j < (int)descendant->children.size(); j++){
 						if(descendant->children[j] != NULL){
 							children = children | (1 << j);
 						}
@@ -624,6 +569,116 @@ void PotreeWriter::flush(){
 	}
 }
 
+void PotreeWriter::loadStateFromDisk(){
+
+
+	{// cloudjs
+		string cloudJSPath = workDir + "/cloud.js";
+		ifstream file(cloudJSPath);
+		string line;
+		string content;
+		while (std::getline(file, line)){
+			content += line + "\n";
+		}
+		cloudjs = CloudJS(content);
+	}
+
+	{
+		this->outputFormat = cloudjs.outputFormat;
+		this->pointAttributes = cloudjs.pointAttributes;
+		this->hierarchyStepSize = cloudjs.hierarchyStepSize;
+		this->spacing = cloudjs.spacing;
+		this->scale = cloudjs.scale;
+		this->aabb = cloudjs.boundingBox;
+		this->numAccepted = cloudjs.numAccepted;
+	}
+
+	{// tree
+		vector<string> hrcPaths;
+		fs::path rootDir(workDir + "/data/r"); 
+		for (fs::recursive_directory_iterator iter(rootDir), end; iter != end; ++iter){
+			fs::path path = iter->path();
+			if(fs::is_regular_file(path)){
+				if(boost::iends_with(path.extension().string(), ".hrc")){
+					hrcPaths.push_back(path.string());
+				}else{
+			
+				}
+			}else if(fs::is_directory(path)){
+		
+			}
+		}
+		std::sort(hrcPaths.begin(), hrcPaths.end(), [](string &a, string &b){
+			return a.size() < b.size();
+		});
+
+		PWNode *root = new PWNode(this, cloudjs.boundingBox);
+		for(string hrcPath : hrcPaths){
+
+			fs::path pHrcPath(hrcPath);
+			string hrcName = pHrcPath.stem().string();
+			PWNode *hrcRoot = root->findNode(hrcName);
+
+			PWNode *current = hrcRoot;
+			current->addedSinceLastFlush = false;
+			current->isInMemory = false;
+			vector<PWNode*> nodes;
+			nodes.push_back(hrcRoot);
+		
+			ifstream fin(hrcPath, ios::in | ios::binary);
+			std::vector<char> buffer((std::istreambuf_iterator<char>(fin)), (std::istreambuf_iterator<char>()));
+
+			for(int i = 0; 5*i < (int)buffer.size(); i++){
+				PWNode *current= nodes[i];
+
+				char children = buffer[i*5];
+				char *p = &buffer[i*5+1];
+				unsigned int* ip = reinterpret_cast<unsigned int*>(p);
+				unsigned int numPoints = *ip;
+
+				//std::bitset<8> bs(children);
+				//cout << i << "\t: " << "children: " << bs << "; " << "numPoints: " << numPoints << endl;
+
+				current->numAccepted = numPoints;
+
+				if(children != 0){
+					current->children.resize(8, NULL);
+					for(int j = 0; j < 8; j++){
+						if((children & (1 << j)) != 0){
+							AABB cAABB = childAABB(current->aabb, j);
+							PWNode *child = new PWNode(this, j, cAABB, current->level + 1);
+							child->parent = current;
+							child->addedSinceLastFlush = false;
+							child->isInMemory = false;
+							current->children[j] = child;
+							nodes.push_back(child);
+						}
+					}
+				}
+
+			}
+		}
+
+		this->root = root;
+
+		// TODO set it to actual number
+		this->numAdded = 1;
+
+		//int numNodes = 0;
+		//root->traverse([&](PWNode *node){
+		//	if(numNodes < 50){
+		//		cout << std::left << std::setw(10) << node->name();
+		//		cout << std::right << std::setw(10) << node->numAccepted << "; ";
+		//		cout << node->aabb.min << " - " << node->aabb.max << endl;
+		//	}
+		//
+		//	numNodes++;
+		//	
+		//});
+	}
+
+
+}
 
 
 }
