@@ -128,10 +128,10 @@ function initGUI(){
 		"Clip Mode": "Highlight Inside",
 		"quality": sceneProperties.quality,
 		"EDL": sceneProperties.useEDL,
-		"skybox": false,
+		"Frustums": false,
 		"stats": showStats,
 		"BoundingBox": showBoundingBox,
-		"DEM Collisions": useDEMCollisions,
+//		"DEM Collisions": useDEMCollisions,
 		"MinNodeSize": minNodeSize,
 		"freeze": freeze
 	};
@@ -225,9 +225,14 @@ function initGUI(){
 		});
 	}
 	
-	var pSykbox = fAppearance.add(params, 'skybox');
+/*	var pSykbox = fAppearance.add(params, 'skybox');
 	pSykbox.onChange(function(value){
 		showSkybox = value;
+	});
+*/
+	var pFrustums = fAppearance.add(params,'Frustums');
+	pFrustums.onChange(function(value){
+		showFrustums = value;
 	});
 	
 	var fSettings = gui.addFolder('Settings');
@@ -243,10 +248,11 @@ function initGUI(){
 		}
 	});
 	
-	var pDEMCollisions = fSettings.add(params, 'DEM Collisions');
+/*	var pDEMCollisions = fSettings.add(params, 'DEM Collisions');
 	pDEMCollisions.onChange(function(value){
 		useDEMCollisions = value;
 	});
+*/
 	
 	var pMinNodeSize = fSettings.add(params, 'MinNodeSize', 0, 1500);
 	pMinNodeSize.onChange(function(value){
@@ -306,7 +312,7 @@ function initThree(){
 	renderer.autoClear = false;
 	elRenderArea.appendChild(renderer.domElement);
 	
-	skybox = Potree.utils.loadSkybox("../resources/textures/skybox/");
+//	skybox = Potree.utils.loadSkybox("../resources/textures/skybox/");
 
 	// camera and controls
 	camera.position.set(-304, 372, 318);
@@ -336,18 +342,19 @@ function initThree(){
 		Potree.POCLoader.load(pointcloudPath, function(geometry){
 			pointcloud = new Potree.PointCloudOctree(geometry);
 			
-			pointcloud.material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+			pointcloud.material.pointSizeType = Potree.PointSizeType.FIXED;
 			pointcloud.material.size = pointSize;
 			pointcloud.visiblePointsTarget = pointCountTarget * 1000 * 1000;
 			
 			referenceFrame.add(pointcloud);
 			
 			referenceFrame.updateMatrixWorld(true);
-			var sg = pointcloud.boundingSphere.clone().applyMatrix4(pointcloud.matrixWorld);
-			
+/*
+      var sg = pointcloud.boundingSphere.clone().applyMatrix4(pointcloud.matrixWorld);
 			referenceFrame.position.copy(sg.center).multiplyScalar(-1);
+ 
 			referenceFrame.updateMatrixWorld(true);
-			
+
 			if(sg.radius > 50*1000){
 				camera.near = 10;
 			}else if(sg.radius > 10*1000){
@@ -357,11 +364,12 @@ function initThree(){
 			}else if(sg.radius > 100){
 				camera.near = 0.5;
 			}else{
+*/
 				camera.near = 0.1;
-			}
+//			}
 			
 			
-			flipYZ();
+//			flipYZ();
 			camera.zoomTo(pointcloud, 1);
 			
 			initGUI();	
@@ -413,17 +421,19 @@ function initThree(){
 			flipYZ();
 			
 			referenceFrame.updateMatrixWorld(true);
-			var sg = pointcloud.boundingSphere.clone().applyMatrix4(pointcloud.matrixWorld);
+/*
+ 			var sg = pointcloud.boundingSphere.clone().applyMatrix4(pointcloud.matrixWorld);
 			
 			referenceFrame.position.sub(sg.center);
 			referenceFrame.position.y += sg.radius / 2;
 			referenceFrame.updateMatrixWorld(true);
+*/
 			
 			camera.zoomTo(pointcloud, 1);
 			
 			initGUI();
 			pointcloud.material.interpolation = false;
-			pointcloud.material.pointSizeType = Potree.PointSizeType.ATTENUATED;
+			pointcloud.material.pointSizeType = Potree.PointSizeType.FIXED;
 			earthControls.pointclouds.push(pointcloud);	
 			
 			
@@ -451,8 +461,8 @@ function initThree(){
 		});
 	}
 	
-	var grid = Potree.utils.createGrid(5, 5, 2);
-	scene.add(grid);
+//	var grid = Potree.utils.createGrid(5, 5, 2);
+//	scene.add(grid);
 	
 	measuringTool = new Potree.MeasuringTool(scenePointCloud, camera, renderer);
 	profileTool = new Potree.ProfileTool(scenePointCloud, camera, renderer);
@@ -470,7 +480,7 @@ function initThree(){
 	var bg = new THREE.Mesh(
 		new THREE.PlaneBufferGeometry(2, 2, 0),
 		new THREE.MeshBasicMaterial({
-			map: texture
+			color: '#000000'
 		})
 	);
 	//bg.position.z = -1;
@@ -514,11 +524,13 @@ function flipYZ(){
 	
 	referenceFrame.updateMatrixWorld(true);
 	pointcloud.updateMatrixWorld();
-	var sg = pointcloud.boundingSphere.clone().applyMatrix4(pointcloud.matrixWorld);
+/*
+  var sg = pointcloud.boundingSphere.clone().applyMatrix4(pointcloud.matrixWorld);
 	referenceFrame.position.copy(sg.center).multiplyScalar(-1);
 	referenceFrame.updateMatrixWorld(true);
 	referenceFrame.position.y -= pointcloud.getWorldPosition().y;
 	referenceFrame.updateMatrixWorld(true);
+*/
 }
 
 function onKeyDown(event){
@@ -772,13 +784,14 @@ var PotreeRenderer = function(){
 		}
 		
 
-		// render skybox
+/*		// render skybox
 		if(showSkybox){
 			skybox.camera.rotation.copy(camera.rotation);
 			renderer.render(skybox.scene, skybox.camera);
 		}else{
+*/
 			renderer.render(sceneBG, cameraBG);
-		}
+//		}
 		
 		if(pointcloud){
 			if(pointcloud.originalMaterial){
@@ -895,12 +908,13 @@ var HighQualityRenderer = function(){
 		
 		
 		renderer.clear();
-		if(showSkybox){
+/*		if(showSkybox){
 			skybox.camera.rotation.copy(camera.rotation);
 			renderer.render(skybox.scene, skybox.camera);
 		}else{
+*/
 			renderer.render(sceneBG, cameraBG);
-		}
+//		}
 		renderer.render(scene, camera);
 		
 		if(pointcloud){
@@ -1082,12 +1096,13 @@ var EDLRenderer = function(){
 		resize();
 		
 		renderer.clear();
-		if(showSkybox){
+/*		if(showSkybox){
 			skybox.camera.rotation.copy(camera.rotation);
 			renderer.render(skybox.scene, skybox.camera);
 		}else{
+*/
 			renderer.render(sceneBG, cameraBG);
-		}
+//		}
 		renderer.render(scene, camera);
 		
 		if(pointcloud){
